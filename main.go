@@ -34,12 +34,12 @@ func main() {
 
     var n int = 0
     var stream *rtp.RtpStream
-    for ;n <= 0 || n >= len(rtpStreams); {
+    for ;n <= 0 || n > len(rtpStreams); {
       fmt.Print("[n]: " )
       fmt.Scanf("%d\n", &n)
-      fmt.Printf("%s\n", rtpStreams[n-1])
-      stream = rtpStreams[n-1]
     }
+    fmt.Printf("%s\n", rtpStreams[n-1])
+    stream = rtpStreams[n-1]
 
     fmt.Printf("\nMedia type:" +
         "\n\t(1) Audio" +
