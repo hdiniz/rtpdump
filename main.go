@@ -36,7 +36,7 @@ func main() {
     var stream *rtp.RtpStream
     for ;n <= 0 || n >= len(rtpStreams); {
       fmt.Print("[n]: " )
-      fmt.Scanf("%d", &n)
+      fmt.Scanf("%d\n", &n)
       fmt.Printf("%s\n", rtpStreams[n-1])
       stream = rtpStreams[n-1]
     }
@@ -46,7 +46,7 @@ func main() {
         "\n\t(2) Video\n")
 
     fmt.Print("[n]: " )
-    fmt.Scanf("%d", &n)
+    fmt.Scanf("%d\n", &n)
 
     if n != 1 {
       fmt.Println("Video not supported... yet.")
@@ -61,7 +61,7 @@ func main() {
         fmt.Printf("\n\t(%d) - %s", i+1, v.Name())
       }
       fmt.Print("\n[n]: " )
-      fmt.Scanf("%d", &n)
+      fmt.Scanf("%d\n", &n)
     }
     decoder := audioCodecs[n-1]
 
@@ -92,37 +92,4 @@ func main() {
     defer f.Close()
     f.Write(decoder.GetStorageFormat())
     f.Sync()
-
-/*
-    f, err := os.Create(outputFile)
-    defer f.Close()
-    if err != nil {
-        log.Panic(err)
-    }
-    amrMagic := "#!AMR\n"
-    switch n {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-            f.Write([]byte(amrMagic))
-            f.Sync()
-            fmt.Println("Wrote file")
-            for _,p := range stream.RtpPackets {
-                amrRtpPayload := p.Payload
-                frameHeader := []byte{0x00}
-                frameHeader[0] = (amrRtpPayload[0] & 0x07)<<4 | (amrRtpPayload[1] & 0x80)>>4
-                frameHeader[0] = frameHeader[0] | (amrRtpPayload[1] & 0x40)>>4
-                f.Write(frameHeader)
-
-                speechPayload := amrRtpPayload[1:]
-                speechFrame := make([]byte, len(speechPayload))
-                for k := 0; k < len(speechPayload)-2; k++ {
-                    speechFrame[k] = (speechPayload[k] & 0x3F) << 2 | (speechPayload[k+1] & 0xC0)>>6
-                }
-                f.Write(speechFrame)
-            }
-            f.Sync()
-    }*/
-
 }
