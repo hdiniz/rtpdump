@@ -31,17 +31,17 @@ type RtpStream struct {
 }
 
 func (r RtpStream) String() string {
-    return fmt.Sprintf(
-        "%s\t%s |\t%s \t%d\t->\t%s\t%d\t| t:%d\tc:%d\tssrc:0x%X",
-        util.TimeToStr(r.StartTime),
-        util.TimeToStr(r.EndTime),
-        r.SrcIP,
-        r.SrcPort,
-        r.DstIP,
-        r.DstPort,
-        r.PayloadType,
-        len(r.RtpPackets),
-        r.Ssrc)
+  return fmt.Sprintf("%s - %s   0x%08X   %3d   %5d   %s:%d -> %s:%d",
+    util.TimeToStr(r.StartTime),
+    util.TimeToStr(r.EndTime),
+    r.Ssrc,
+    r.PayloadType,
+    len(r.RtpPackets),
+    r.SrcIP,
+    r.SrcPort,
+    r.DstIP,
+    r.DstPort,
+  )
 }
 
 func (r *RtpStream) AddPacket(rtp *RtpPacket) {

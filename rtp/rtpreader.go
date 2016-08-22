@@ -3,6 +3,7 @@ package rtp
 import (
   "errors"
   "time"
+  log "github.com/Sirupsen/logrus"
   "github.com/google/gopacket"
   "github.com/google/gopacket/layers"
   "github.com/google/gopacket/pcap"
@@ -25,11 +26,18 @@ func NewRtpReader(path string) (reader *RtpReader, err error) {
 func (r *RtpReader) openPcapFile(path string) (err error) {
   r.handle, err = pcap.OpenOffline(path)
   if err != nil {
+      log.WithFields(log.Fields{
+          "path": path,
+          "error": err,
+      }).Error("Failed to open pcap file")
       return err
   }
   err = r.handle.SetBPFFilter(RtpCapureFilter)
   if err != nil {
       r.handle.Close()
+      log.WithFields(log.Fields{
+          "capture-filter": RtpCapureFilter,
+      }).Error("Failed to set bpf file")
       return err
   }
   return nil

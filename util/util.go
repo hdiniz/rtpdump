@@ -5,7 +5,7 @@ import (
   "time"
 )
 
-var timeFormat = "%02d-%02d-%dT%02d:%02d:%02d"
+var timeFormat = "%02d-%02d-%d %02d:%02d:%02d"
 
 func TimeToStr(t time.Time) string {
   return fmt.Sprintf(
