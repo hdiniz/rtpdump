@@ -2,12 +2,13 @@ package codecs
 
 import (
   "fmt"
+  "github.com/hdiniz/rtpdump/rtp"
 )
 
 type Codec interface {
   Init()
   SetOptions(options map[string]string) error
-  HandleRtpPacket(timestamp uint32, payload []byte) ([]byte, error)
+  HandleRtpPacket(packet *rtp.RtpPacket) ([]byte, error)
   GetFormatMagic() []byte
 }
 

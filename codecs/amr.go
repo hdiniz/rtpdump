@@ -1,7 +1,8 @@
 package codecs
 import (
   "errors"
-  log "github.com/Sirupsen/logrus"
+  "github.com/hdiniz/rtpdump/log"
+  "github.com/hdiniz/rtpdump/rtp"
 )
 
 const AMR_NB_MAGIC string = "#!AMR\n"
@@ -13,18 +14,17 @@ const AMR_WB_SAMPLE_RATE = 16000
 
 type Amr struct {
   started bool
+  configured bool
   sampleRate int
   octetAligned bool
   timestamp uint32
 }
 
 func NewAmr() Codec {
-  return &Amr{}
+  return &Amr{started: false, configured: false, timestamp: 0}
 }
 
 func (amr *Amr) Init() {
-  amr.started = false
-  amr.timestamp = 0
 }
 
 func (amr *Amr) isWideBand() bool {
@@ -67,30 +67,54 @@ func (amr *Amr) SetOptions(options map[string]string) error {
   } else {
     return errors.New("invalid codec option value")
   }
-
+  amr.configured = true
   return nil
 }
 
-func (amr *Amr) HandleRtpPacket(timestamp uint32, payload []byte) ([]byte, error) {
-  if amr.octetAligned {
-    return amr.handleOaMode(timestamp, payload)
-  } else {
-    return amr.handleBeMode(timestamp, payload)
+func (amr *Amr) HandleRtpPacket(packet *rtp.RtpPacket) (result []byte, err error) {
+  if !amr.configured {
+    return nil, amr.invalidState()
   }
+
+  result = append(result, amr.handleMissingSamples(packet.Timestamp)...)
+
+  var speechFrame []byte
+  if amr.octetAligned {
+    speechFrame, err = amr.handleOaMode(packet.Timestamp, packet.Payload)
+  } else {
+    speechFrame, err = amr.handleBeMode(packet.Timestamp, packet.Payload)
+  }
+
+  if err != nil {
+    return nil, err
+  }
+  result = append(result, speechFrame...)
+  return result, nil
+}
+
+func (amr *Amr) handleMissingSamples(timestamp uint32) (result []byte) {
+  if amr.timestamp != 0 {
+    lostSamplesFromPrevious := ((timestamp - amr.timestamp) / (uint32(amr.sampleRate) / 50)) -1
+    for i := lostSamplesFromPrevious; i > 0; i-- {
+      result = append(result, 0xFC)
+    }
+  }
+  return result
+}
+
+func (amr *Amr) getSpeechFrameByteSize(frameType int) (size int) {
+  if amr.isWideBand() {
+    size = AMR_WB_FRAME_SIZE[frameType]
+  } else {
+    size = AMR_NB_FRAME_SIZE[frameType]
+  }
+  return
 }
 
 func (amr *Amr) handleOaMode(timestamp uint32, payload []byte) ([]byte, error) {
 
   var result []byte
-  var lostSamplesFromPrevious uint32
   var currentTimestamp uint32
-
-  if amr.timestamp != 0 {
-    lostSamplesFromPrevious = (timestamp - amr.timestamp) / 160 -1
-    for i := lostSamplesFromPrevious; i > 0; i-- {
-      result = append(result, 0xFC)
-    }
-  }
 
   frame := 0
   rtpFrameHeader := payload[0:]
@@ -98,36 +122,19 @@ func (amr *Amr) handleOaMode(timestamp uint32, payload []byte) ([]byte, error) {
   // TOC := [F][FT(4bit)][Q][P][P]
   // storage := [0][FT(4bit)][Q][0][0]
   cmr := (rtpFrameHeader[0] & 0xF0) >> 4
-  isLastFrame := (rtpFrameHeader[1] & 0x80) & 0x80 == 0x80
+  isLastFrame := (rtpFrameHeader[1] & 0x80) & 0x80 == 0x00
   frameType := (rtpFrameHeader[1] & 0x78) >> 3
   quality := (rtpFrameHeader[1] & 0x04) & 0x04 == 0x04
 
-  speechFrameHeader := cmr << 4
-  speechFrameHeader = speechFrameHeader | (rtpFrameHeader[1] & 0x40)
+  log.Sdebug("octet-aligned, lastFrame:%t, cmr:%d, frameType:%d, quality:%t",
+    isLastFrame, cmr, frameType, quality)
 
-  var speechFrameSize int
-  if amr.isWideBand() {
-    speechFrameSize = AMR_WB_FRAME_SIZE[frameType]
-  } else {
-    speechFrameSize = AMR_NB_FRAME_SIZE[frameType]
-  }
+  speechFrameHeader := frameType << 3
+  speechFrameHeader = speechFrameHeader | (rtpFrameHeader[1] & 0x04)
 
-  currentTimestamp = timestamp + uint32(160*frame)
-  log.WithFields(log.Fields{
-    "sample-rate": amr.sampleRate,
-    "rtpFrameHeader": rtpFrameHeader,
-    "timestamp": timestamp,
-    "currentTimestamp": currentTimestamp,
-    "previousTimestamp": amr.timestamp,
-    "frame": frame,
-    "octet-aligned": amr.octetAligned,
-    "cmr": cmr,
-    "isLastFrame": isLastFrame,
-    "frameType": frameType,
-    "quality": quality,
-    "speechFrameSize": speechFrameSize,
-    "lostSamplesFromPrevious": lostSamplesFromPrevious,
-  }).Debug("amr frame")
+  speechFrameSize := amr.getSpeechFrameByteSize(int(frameType))
+
+  currentTimestamp = timestamp + uint32((amr.sampleRate / 50)*frame)
 
   if !isLastFrame {
     log.Warn("Amr does not suport more than one frame per payload - discarted")
@@ -146,16 +153,7 @@ func (amr *Amr) handleOaMode(timestamp uint32, payload []byte) ([]byte, error) {
 
 func (amr *Amr) handleBeMode(timestamp uint32, payload []byte) ([]byte, error) {
   var result []byte
-  var lostSamplesFromPrevious uint32
   var currentTimestamp uint32
-
-
-  if amr.timestamp != 0 {
-    lostSamplesFromPrevious = (timestamp - amr.timestamp) / 160 -1
-    for i := lostSamplesFromPrevious; i > 0; i-- {
-      result = append(result, 0xFC)
-    }
-  }
 
   frame := 0
   rtpFrameHeader := payload[0:]
@@ -166,32 +164,15 @@ func (amr *Amr) handleBeMode(timestamp uint32, payload []byte) ([]byte, error) {
   frameType := (rtpFrameHeader[0] & 0x07) << 1 | (rtpFrameHeader[1] & 0x80) >> 7
   quality := (rtpFrameHeader[1] & 0x04) >> 2 & 0x01 == 0x01
 
+  log.Sdebug("bandwidth-efficient, lastFrame:%t, cmr:%d, frameType:%d, quality:%t",
+    isLastFrame, cmr, frameType, quality)
+
   speechFrameHeader := (rtpFrameHeader[0] & 0x07)<<4 | (rtpFrameHeader[1] & 0x80)>>4
   speechFrameHeader = speechFrameHeader | (rtpFrameHeader[1] & 0x40)>>4
 
-  var speechFrameSize int
-  if amr.isWideBand() {
-    speechFrameSize = AMR_WB_FRAME_SIZE[frameType]
-  } else {
-    speechFrameSize = AMR_NB_FRAME_SIZE[frameType]
-  }
+  speechFrameSize := amr.getSpeechFrameByteSize(int(frameType))
 
-  currentTimestamp = timestamp + uint32(160*frame)
-  log.WithFields(log.Fields{
-    "sample-rate": amr.sampleRate,
-    "rtpFrameHeader": rtpFrameHeader,
-    "timestamp": timestamp,
-    "currentTimestamp": currentTimestamp,
-    "previousTimestamp": amr.timestamp,
-    "frame": frame,
-    "octet-aligned": amr.octetAligned,
-    "cmr": cmr,
-    "isLastFrame": isLastFrame,
-    "frameType": frameType,
-    "quality": quality,
-    "speechFrameSize": speechFrameSize,
-    "lostSamplesFromPrevious": lostSamplesFromPrevious,
-  }).Debug("amrnb frame")
+  currentTimestamp = timestamp + uint32((amr.sampleRate / 50)*frame)
 
   if !isLastFrame {
     log.Warn("Amr does not suport more than one frame per payload - discarted")
@@ -215,7 +196,6 @@ func (amr *Amr) handleBeMode(timestamp uint32, payload []byte) ([]byte, error) {
   amr.timestamp = currentTimestamp
   return result, nil
 }
-
 
 var AmrMetadata = CodecMetadata{
   Name: "amr",

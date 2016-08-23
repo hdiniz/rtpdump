@@ -2,11 +2,11 @@ package main
 
 import (
     "fmt"
-    log "github.com/Sirupsen/logrus"
     "os"
     "github.com/urfave/cli"
     "github.com/hdiniz/rtpdump/codecs"
     "github.com/hdiniz/rtpdump/console"
+    "github.com/hdiniz/rtpdump/log"
     "github.com/hdiniz/rtpdump/rtp"
 )
 
@@ -15,14 +15,9 @@ var streamsCmd = func (c *cli.Context) error {
   inputFile := c.Args().First()
 
   if len(c.Args()) <= 0 {
-    log.Error("wrong usage for streams")
     cli.ShowCommandHelp(c, "streams");
     return cli.NewExitError("wrong usage for streams", 1)
   }
-
-  log.WithFields(log.Fields{
-      "input-file": inputFile,
-  }).Debug("streams cmd invoked")
 
   rtpReader, err := rtp.NewRtpReader(inputFile)
 
@@ -52,19 +47,9 @@ var dumpCmd = func (c *cli.Context) error {
   if inputFile == "" ||
     (!interactive &&
     (codec == "" || codecOptions == "" || outputFile == "")) {
-
-    log.Error("wrong usage for dump")
     cli.ShowCommandHelp(c, "dump");
     return cli.NewExitError("wrong usage for dump", 1)
   }
-
-  log.WithFields(log.Fields{
-      "input-file": inputFile,
-      "output-file": outputFile,
-      "interactive": interactive,
-      "codec": codec,
-      "codec-options": codecOptions,
-  }).Debug("dump cmd invoked")
 
   rtpReader, err := rtp.NewRtpReader(inputFile)
 
@@ -77,62 +62,55 @@ var dumpCmd = func (c *cli.Context) error {
   if interactive {
     return doInteractiveDump(c, rtpReader)
   } else {
-    log.Error("non interactive not supported at the moment")
-    return cli.NewExitError("not supported", 1)
+    return cli.NewExitError("non interactive not supported", 1)
   }
 }
 
 func doInteractiveDump(c *cli.Context, rtpReader *rtp.RtpReader) error {
   rtpStreams := rtpReader.GetStreams()
 
-  var chooseRtpStream = func(attempts int) error {
-    fmt.Println("Choose RTP Stream:")
-    for i,v := range rtpStreams {
-      fmt.Printf("(%03d) %s\n", i+1, v)
-    }
-    fmt.Printf("[%d-%d]: ", 1, len(rtpStreams))
-    return nil
+  var rtpStreamsOptions []string
+  for _,v := range rtpStreams {
+    rtpStreamsOptions = append(rtpStreamsOptions, v.String())
   }
-  streamIndex, err := console.ExpectIntRange(1, len(rtpStreams), chooseRtpStream)
+
+  streamIndex, err := console.ExpectIntRange(
+    1,
+    len(rtpStreams),
+    console.ListPrompt("Choose RTP Stream", rtpStreamsOptions...))
+
   if err != nil {
     return cli.NewMultiError(cli.NewExitError("invalid input", 1), err)
   }
   fmt.Printf("(%-3d) %s\n\n", streamIndex, rtpStreams[streamIndex-1])
 
-  var chooseRtpCodec = func(attempts int) error {
-    fmt.Println("Choose codec:")
-    for i,v := range codecs.CodecList {
-      fmt.Printf("(%03d) %s\n", i+1, v.Name)
-    }
-    fmt.Printf("[%d-%d]: ", 1, len(codecs.CodecList))
-    return nil
+  var codecList []string
+  for _,v := range codecs.CodecList {
+    codecList = append(codecList, v.Name)
   }
+  codecIndex, err := console.ExpectIntRange(
+    1,
+    len(codecs.CodecList),
+    console.ListPrompt("Choose codec:", codecList...))
 
-  codecIndex, err := console.ExpectIntRange(1, len(codecs.CodecList), chooseRtpCodec)
   if err != nil {
     return cli.NewMultiError(cli.NewExitError("invalid input", 1), err)
   }
   fmt.Printf("(%-3d) %s\n\n", codecIndex, codecs.CodecList[codecIndex-1].Name)
 
-
   codecMetadata := codecs.CodecList[codecIndex-1]
 
   optionsMap := make(map[string]string)
   for _,v := range codecMetadata.Options {
-    var chooseCodecOption = func(attempts int) error {
-      fmt.Printf("%s - %s\n", v.Name, v.Description)
-      if v.RestrictValues {
-        for k,rv := range v.ValidValues {
-          fmt.Printf("(%s) %s\n", rv, v.ValueDescription[k])
-        }
-      }
-      return nil
-    }
     var optionValue string
     if v.RestrictValues {
-      optionValue, err = console.ExpectRestrictedString(v.ValidValues, chooseCodecOption)
+      optionValue, err = console.ExpectRestrictedString(
+        v.ValidValues,
+        console.KeyValuePrompt(fmt.Sprintf("%s - %s", v.Name, v.Description),
+          v.ValidValues, v.ValueDescription))
     } else {
-      optionValue, err = console.ExpectAnyString(chooseCodecOption)
+      optionValue, err = console.ExpectAnyString(
+        console.Prompt(fmt.Sprintf("%s - %s: ", v.Name, v.Description)))
     }
 
     if err != nil {
@@ -141,7 +119,6 @@ func doInteractiveDump(c *cli.Context, rtpReader *rtp.RtpReader) error {
     optionsMap[v.Name] = optionValue
   }
 
-
   outputFile, err := console.ExpectAnyString(console.Prompt("Output file: "))
 
   if err != nil {
@@ -149,7 +126,6 @@ func doInteractiveDump(c *cli.Context, rtpReader *rtp.RtpReader) error {
   }
 
   fmt.Printf("%s\n", outputFile)
-
 
   codec := codecMetadata.Init()
   err = codec.SetOptions(optionsMap)
@@ -164,13 +140,12 @@ func doInteractiveDump(c *cli.Context, rtpReader *rtp.RtpReader) error {
   defer f.Close()
   f.Write(codec.GetFormatMagic())
   for _,r := range rtpStreams[streamIndex-1].RtpPackets {
-    frames, err := codec.HandleRtpPacket(r.Timestamp, r.Payload)
+    frames, err := codec.HandleRtpPacket(r)
     if err == nil {
       f.Write(frames)
     }
   }
   f.Sync()
-
 
   return nil
 }
@@ -197,7 +172,7 @@ func main() {
 
     app := cli.NewApp()
     app.Name = "rtpdump"
-    app.Version = "0.1.0"
+    app.Version = "0.5.0"
     cli.AppHelpTemplate += `
      /\_/\
     ( o.o )
@@ -205,11 +180,10 @@ func main() {
     `
 
     app.Before = func(c *cli.Context) error {
-      log.SetOutput(os.Stdout)
       if c.GlobalBool("debug") {
-        log.SetLevel(log.DebugLevel)
+        log.SetLevel(log.TRACE)
       } else {
-        log.SetLevel(log.WarnLevel)
+        log.SetLevel(log.INFO)
       }
       return nil
     }

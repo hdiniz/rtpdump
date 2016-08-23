@@ -77,3 +77,25 @@ func Prompt(prompt string) PrintFunction {
     return nil
   }
 }
+
+func ListPrompt(title string, items ...string) PrintFunction {
+  fmt.Println(len(items))
+  return func (attempts int) error {
+    fmt.Println(title)
+    for i := 0; i < len(items); i++ {
+      fmt.Printf("(%03d) %s\n", i+1, items[i])
+    }
+    fmt.Printf("[%d-%d]: ", 1, len(items))
+    return nil
+  }
+}
+
+func KeyValuePrompt(title string, keys []string, values []string) PrintFunction {
+  return func (attempts int) error {
+    fmt.Println(title)
+    for i := 0; i < len(keys); i++  {
+      fmt.Printf("(%s) %s\n", keys[i], values[i])
+    }
+    return nil
+  }
+}
