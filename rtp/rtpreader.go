@@ -3,7 +3,7 @@ package rtp
 import (
   "errors"
   "time"
-  log "github.com/Sirupsen/logrus"
+  "github.com/hdiniz/rtpdump/log"
   "github.com/google/gopacket"
   "github.com/google/gopacket/layers"
   "github.com/google/gopacket/pcap"
@@ -26,18 +26,13 @@ func NewRtpReader(path string) (reader *RtpReader, err error) {
 func (r *RtpReader) openPcapFile(path string) (err error) {
   r.handle, err = pcap.OpenOffline(path)
   if err != nil {
-      log.WithFields(log.Fields{
-          "path": path,
-          "error": err,
-      }).Error("Failed to open pcap file")
+      log.Error("Failed to open pcap file")
       return err
   }
   err = r.handle.SetBPFFilter(RtpCapureFilter)
   if err != nil {
       r.handle.Close()
-      log.WithFields(log.Fields{
-          "capture-filter": RtpCapureFilter,
-      }).Error("Failed to set bpf file")
+      log.Error("Failed to set bpf file")
       return err
   }
   return nil
@@ -81,9 +76,11 @@ func (r *RtpReader) parsePacket(packet gopacket.Packet) error {
             rtp, _ := rtpLayer.(*RtpLayer)
             r.processRtpPacket(receivedAt, ip, udp, rtp)
         } else {
+            log.Debug("Not able to decode RTP layer")
             return errors.New("Not able to decode RTP layer")
         }
     } else {
+        log.Debug("Not able to decode Network/Transport layer")
         return errors.New("Not able to decode Network/Transport layers")
     }
     return nil
