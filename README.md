@@ -33,10 +33,8 @@ Supports Single NAL Mode and some Non-Interleaved Mode streams, due to current l
 
 + rtpdump streams [pcap]  
   displays RTP streams
-+ rtpdump dump -i [pcap]
-  dumps a media stream.  
-  `-i` options is for interactive dump. Codecs and modes are choosen via prompt.  
-  **Currently only mode available**
++ rtpdump dump [pcap]
+  dumps a media stream.
 
 ## compiling
 
@@ -46,10 +44,11 @@ For Windows, make sure mingw(32/64) toolchain is on PATH for gopacket WinPcap de
 
 ## planned features
 
-1. Support for H264
+1. Support for VoWiFi streams - i.e decoding IPSec packets
 2. Include stream analisys, packets lost, jitter, etc
 3. Media player directly from pcap. ffmpeg support.
 4. Jitter buffer to simulate original condition, i.e. packet loss due to jitter
+5. Support multiple speach frames in audio packet
 
 ## contributions
 
