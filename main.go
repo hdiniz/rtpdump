@@ -6,12 +6,19 @@ import (
 
 	"github.com/hdiniz/rtpdump/codecs"
 	"github.com/hdiniz/rtpdump/console"
+	"github.com/hdiniz/rtpdump/esp"
 	"github.com/hdiniz/rtpdump/log"
 	"github.com/hdiniz/rtpdump/rtp"
 	"github.com/urfave/cli"
 )
 
+func loadKeyFile(c *cli.Context) error {
+	return esp.LoadKeyFile("esp-keys.txt")
+}
+
 var streamsCmd = func(c *cli.Context) error {
+	loadKeyFile(c)
+
 	inputFile := c.Args().First()
 
 	if len(c.Args()) <= 0 {
@@ -42,6 +49,9 @@ var streamsCmd = func(c *cli.Context) error {
 }
 
 var dumpCmd = func(c *cli.Context) error {
+
+	loadKeyFile(c)
+
 	inputFile := c.Args().First()
 
 	if inputFile == "" {

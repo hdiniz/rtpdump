@@ -28,6 +28,20 @@ Supports Single NAL Mode and some Non-Interleaved Mode streams, due to current l
 + H263 - [RFC 2190](https://tools.ietf.org/html/rfc2190)  
   *Not yet supported.*
 
+## ipsec support
+
+In order to support dumping VoWiFi media some support for ESP (Encapsulating Security Payload) decryption is present.
+
+| Encryption Algorithm | Support       |
+|--------------------- |-------------- |
+| 3DES CBC             | Yes           |
+| DES CBC              | No - Planned  |
+| AES CBC              | No - Planned  |
+
+Keys are read from file 'esp-keys.txt' on the current directory. One key per file, for example:
+[SPI] [Encryption Algorithm] [Key]
+0x00d40016 des3_cbc 0x091199869ec18afd8e38f77eb1252685924937d3921a178e
+0xcb97da43 des3_cbc 0xaaa316cd3fa41daa9afe6e8f42a9ae0ce2bd5128cef5a60f
 
 ## usage
 
