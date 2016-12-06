@@ -39,8 +39,9 @@ In order to support dumping VoWiFi media some support for ESP (Encapsulating Sec
 | AES CBC              | No - Planned  |
 
 Keys are read from file 'esp-keys.txt' on the current directory *by default*. One key per file, for example:
-[SPI] [Encryption Algorithm] [Key]
-0x00d40016 des3_cbc 0x091199869ec18afd8e38f77eb1252685924937d3921a178e
+
+[SPI] [Encryption Algorithm] [Key]  
+0x00d40016 des3_cbc 0x091199869ec18afd8e38f77eb1252685924937d3921a178e  
 0xcb97da43 des3_cbc 0xaaa316cd3fa41daa9afe6e8f42a9ae0ce2bd5128cef5a60f
 
 Global flag `-k` can be used to indicate another key file path. Check `-help`.
@@ -60,11 +61,10 @@ For Windows, make sure mingw(32/64) toolchain is on PATH for gopacket WinPcap de
 
 ## planned features
 
-1. Support for VoWiFi streams - i.e decoding IPSec packets
-2. Include stream analisys, packets lost, jitter, etc
-3. Media player directly from pcap. ffmpeg support.
-4. Jitter buffer to simulate original condition, i.e. packet loss due to jitter
-5. Support multiple speach frames in audio packet
+1. Include stream analisys, packets lost, jitter, etc
+2. Media player directly from pcap. ffmpeg support.
+3. Jitter buffer to simulate original condition, i.e. packet loss due to jitter
+4. Support multiple speach frames in audio packet
 
 ## contributions
 
