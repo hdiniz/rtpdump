@@ -178,11 +178,11 @@ func codecsList(c *cli.Context) error {
 
 func main() {
 
-	log.SetLevel(log.TRACE)
+	log.SetLevel(log.INFO)
 
 	app := cli.NewApp()
 	app.Name = "rtpdump"
-	app.Version = "0.8.0"
+	app.Version = "0.8.1"
 	cli.AppHelpTemplate += `
      /\_/\
     ( o.o )
