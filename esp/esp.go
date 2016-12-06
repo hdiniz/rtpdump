@@ -68,20 +68,25 @@ func DecodeESPLayer(packet gopacket.Packet, esp *layers.IPSecESP) gopacket.Packe
 	if entry == nil {
 		return nil
 	}
-
 	key := entry.key
+	algorithm := entry.algorithm
 
-	payloadLen := len(esp.Encrypted[8:])
-	cipherData := make([]byte, payloadLen+payloadLen%8)
-	copy(cipherData, esp.Encrypted[8:])
+	var clearData []byte
 
-	iv := esp.Encrypted[:8]
-	blockCipher, _ := des.NewTripleDESCipher(key)
-	mode := cipher.NewCBCDecrypter(blockCipher, iv)
+	if algorithm == "des3_cbc" {
+		payloadLen := len(esp.Encrypted[8:])
+		cipherData := make([]byte, payloadLen+payloadLen%8)
+		copy(cipherData, esp.Encrypted[8:])
 
-	clearData := make([]byte, len(cipherData)+1)
+		iv := esp.Encrypted[:8]
+		blockCipher, _ := des.NewTripleDESCipher(key)
+		mode := cipher.NewCBCDecrypter(blockCipher, iv)
 
-	mode.CryptBlocks(clearData, cipherData)
+		clearData = make([]byte, len(cipherData)+1)
+		mode.CryptBlocks(clearData, cipherData)
+	} else {
+		return nil
+	}
 	return makePacket(packet, clearData)
 }
 

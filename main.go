@@ -13,7 +13,7 @@ import (
 )
 
 func loadKeyFile(c *cli.Context) error {
-	return esp.LoadKeyFile("esp-keys.txt")
+	return esp.LoadKeyFile(c.GlobalString("key-file"))
 }
 
 var streamsCmd = func(c *cli.Context) error {
@@ -182,7 +182,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "rtpdump"
-	app.Version = "0.7.0"
+	app.Version = "0.8.0"
 	cli.AppHelpTemplate += `
      /\_/\
     ( o.o )
@@ -215,6 +215,14 @@ func main() {
 					ArgsUsage: "[codec name or empty for all]",
 				},
 			},
+		},
+	}
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "key-file, k",
+			Value: "esp-keys.txt",
+			Usage: "Load ipsec keys from `FILE`",
 		},
 	}
 
