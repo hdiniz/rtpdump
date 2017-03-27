@@ -46,12 +46,30 @@ Keys are read from file 'esp-keys.txt' on the current directory *by default*. On
 
 Global flag `-k` can be used to indicate another key file path. Check `-help`.
 
+## replaying
+
+Its possible to replay a RTP stream, specifying the destination host and port. The stream consumer can be a actual mobile handset or any application that can interpret RTP streams (e.g VLC).
+
+The stream is replayed as is, taking into account the original timestamps in the pcap file and mantaining the original RTP payload type.
+It's up to the receiver to interpret the appropriate stream codec.
+
+For example, VLC accepts a SDP input file:
+```
+v=0
+c=IN IP4 127.0.0.1
+m=audio 1234 RTP/AVP 99
+a=rtpmap:99 AMR/8000
+```
+> rtpdump play --host localhost --port 1234 [pcap containing amr-nb payload type 99]
+
 ## usage
 
 + rtpdump streams [pcap]  
   displays RTP streams
 + rtpdump dump [pcap]
   dumps a media stream.
++ rtpdump play (--host localhost --port port) [pcap]
+  replays a RTP stream over UDP.
 
 ## compiling
 
@@ -61,10 +79,11 @@ For Windows, make sure mingw(32/64) toolchain is on PATH for gopacket WinPcap de
 
 ## planned features
 
-1. Include stream analisys, packets lost, jitter, etc
-2. Media player directly from pcap. ffmpeg support.
-3. Jitter buffer to simulate original condition, i.e. packet loss due to jitter
-4. Support multiple speach frames in audio packet
+1. Better automation and scription support
+2. Include stream analisys, packets lost, jitter, etc
+3. Media player directly from pcap. ffmpeg support.
+4. Jitter buffer to simulate original condition, i.e. packet loss due to jitter
+5. Support multiple speach frames in audio packet
 
 ## contributions
 

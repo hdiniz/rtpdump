@@ -38,6 +38,7 @@ type RtpLayer struct {
 	ExtensionHeaderLength uint16
 	ExtensionHeader       []byte
 	Payload               []byte
+	Data                  []byte
 }
 
 func (l RtpLayer) String() string {
@@ -75,6 +76,7 @@ func (l RtpLayer) RtpPacket() *RtpPacket {
 		ExtensionHeaderLength: l.ExtensionHeaderLength,
 		ExtensionHeader:       l.ExtensionHeader,
 		Payload:               l.Payload,
+		Data:                  l.Data,
 	}
 }
 
@@ -104,6 +106,7 @@ func decodeRtpLayer(data []byte, p gopacket.PacketBuilder) error {
 	}
 
 	var rtp RtpLayer
+	rtp.Data = data
 	rtp.Version = int(data[0]&0xC0) >> 6
 
 	if rtp.Version != 2 {

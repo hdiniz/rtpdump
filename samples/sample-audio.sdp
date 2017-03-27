@@ -1,0 +1,4 @@
+v=0
+c=IN IP4 127.0.0.1
+m=audio 1234 RTP/AVP 99
+a=rtpmap:99 AMR/8000

@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"time"
 
 	"github.com/hdiniz/rtpdump/codecs"
 	"github.com/hdiniz/rtpdump/console"
@@ -43,6 +45,78 @@ var streamsCmd = func(c *cli.Context) error {
 
 	for _, v := range rtpStreams {
 		fmt.Printf("%s\n", v)
+	}
+
+	return nil
+}
+
+var playCmd = func(c *cli.Context) error {
+
+	loadKeyFile(c)
+
+	inputFile := c.Args().First()
+
+	if inputFile == "" {
+		cli.ShowCommandHelp(c, "play")
+		return cli.NewExitError("wrong usage for play", 1)
+	}
+
+	host := c.String("host")
+	port := c.Int("port")
+
+	rtpReader, err := rtp.NewRtpReader(inputFile)
+
+	if err != nil {
+		return cli.NewMultiError(cli.NewExitError("failed to open file", 1), err)
+	}
+
+	defer rtpReader.Close()
+
+	rtpStreams := rtpReader.GetStreams()
+
+	if len(rtpStreams) <= 0 {
+		fmt.Println("No streams found")
+		return nil
+	}
+
+	var rtpStreamsOptions []string
+	for _, v := range rtpStreams {
+		rtpStreamsOptions = append(rtpStreamsOptions, v.String())
+	}
+
+	streamIndex, err := console.ExpectIntRange(
+		1,
+		len(rtpStreams),
+		console.ListPrompt("Choose RTP Stream", rtpStreamsOptions...))
+
+	if err != nil {
+		return cli.NewMultiError(cli.NewExitError("invalid input", 1), err)
+	}
+	fmt.Printf("(%-3d) %s\n\n", streamIndex, rtpStreams[streamIndex-1])
+
+	stream := rtpStreams[streamIndex-1]
+
+	fmt.Println(stream)
+
+	RemoteAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := net.DialUDP("udp", nil, RemoteAddr)
+	defer conn.Close()
+	if err != nil {
+		fmt.Printf("Some error %v", err)
+		return nil
+	}
+
+	len := len(stream.RtpPackets)
+	for i, v := range stream.RtpPackets {
+		fmt.Println(v)
+		conn.Write(v.Data)
+
+		if i < len-1 {
+			var wait int
+			next := stream.RtpPackets[i+1]
+			wait = next.ReceivedAt.Nanosecond() - v.ReceivedAt.Nanosecond()
+			time.Sleep(time.Nanosecond * time.Duration(wait))
+		}
 	}
 
 	return nil
@@ -203,6 +277,17 @@ func main() {
 			Usage:     "dumps rtp payload to file",
 			ArgsUsage: "[pcap-file]",
 			Action:    dumpCmd,
+		},
+		{
+			Name:      "play",
+			Aliases:   []string{"p"},
+			Usage:     "replays the selected rtp stream ;)",
+			ArgsUsage: "[pcap-file]",
+			Action:    playCmd,
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "host", Value: "localhost", Usage: "destination host for replayed RTP packets"},
+				cli.IntFlag{Name: "port", Value: 1234, Usage: "destination port for replayed RTP packets"},
+			},
 		},
 		{
 			Name:    "codecs",

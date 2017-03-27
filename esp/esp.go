@@ -85,6 +85,7 @@ func DecodeESPLayer(packet gopacket.Packet, esp *layers.IPSecESP) gopacket.Packe
 		clearData = make([]byte, len(cipherData)+1)
 		mode.CryptBlocks(clearData, cipherData)
 	} else {
+		log.Serror("esp algorithm %s not supported", algorithm)
 		return nil
 	}
 	return makePacket(packet, clearData)
@@ -116,5 +117,3 @@ func spiHexToInt(s string) (uint32, error) {
 func getKeyEntry(spi uint32) *EncKey {
 	return keyList[spi]
 }
-
-//0x10e142e956c808bce1d763f369062e53d6bffc40eaf47ff7
