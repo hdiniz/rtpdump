@@ -175,7 +175,7 @@ func (amr *Amr) handleBeMode(timestamp uint32, payload []byte) ([]byte, error) {
 	// packing frame with TOC: frame type and quality bit
 	// RTP=[CMR(4bit)[F][FT(4bit)][Q][..speechFrame]] -> storage=[0][FT(4bit)][Q][0][0]
 	cmr := (rtpFrameHeader[0] & 0xF0) >> 4
-	isLastFrame := (rtpFrameHeader[0]&0x08)>>4&0x01 == 0x00
+	isLastFrame := (rtpFrameHeader[0]&0x08)>>3 == 0x00
 	frameType := (rtpFrameHeader[0]&0x07)<<1 | (rtpFrameHeader[1]&0x80)>>7
 	quality := (rtpFrameHeader[1] & 0x40) == 0x40
 
