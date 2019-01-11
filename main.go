@@ -84,6 +84,14 @@ var playCmd = func(c *cli.Context) error {
 		rtpStreamsOptions = append(rtpStreamsOptions, v.String())
 	}
 
+	// Locate the start time of first stream
+	var firstTime time.Time = rtpStreams[0].StartTime
+	for _, v := range rtpStreams {
+		if v.StartTime.Before(firstTime) {
+			firstTime = v.StartTime
+		}
+	}
+
 	streamIndex, err := console.ExpectIntRange(
 		1,
 		len(rtpStreams),
@@ -106,16 +114,27 @@ var playCmd = func(c *cli.Context) error {
 		return nil
 	}
 
+	// Delay start w/respect to start of initial stream
+	first := stream.RtpPackets[0]
+	syncWait := first.ReceivedAt.Sub(firstTime)
+	fmt.Printf("Delaying of (%d) ns\n\n", syncWait.Nanoseconds())
+	time.Sleep(syncWait)
+
 	len := len(stream.RtpPackets)
 	for i, v := range stream.RtpPackets {
 		fmt.Println(v)
 		conn.Write(v.Data)
 
 		if i < len-1 {
-			var wait int
+			/*
+				var wait int
+				next := stream.RtpPackets[i+1]
+				wait = next.ReceivedAt.Nanosecond() - v.ReceivedAt.Nanosecond()
+				time.Sleep(time.Nanosecond * time.Duration(wait))
+			*/
 			next := stream.RtpPackets[i+1]
-			wait = next.ReceivedAt.Nanosecond() - v.ReceivedAt.Nanosecond()
-			time.Sleep(time.Nanosecond * time.Duration(wait))
+			wait := next.ReceivedAt.Sub(v.ReceivedAt)
+			time.Sleep(wait)
 		}
 	}
 
